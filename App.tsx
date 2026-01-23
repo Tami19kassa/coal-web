@@ -1,8 +1,8 @@
 // src/App.tsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { supabase } from './lib/supabase';
 import { Project, Inquiry } from './types';
-import { INITIAL_PROJECTS } from './constants';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import ProjectDetail from './pages/ProjectDetail';
@@ -10,78 +10,108 @@ import AdminDashboard from './pages/AdminDashboard';
 import Footer from './components/Footer';
 
 const App: React.FC = () => {
-  // Use lazy initialization to avoid parsing JSON on every render
-  const [projects, setProjects] = useState<Project[]>(() => {
-    try {
-      const saved = localStorage.getItem('coal_projects');
-      return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-    } catch (e) {
-      console.error("Data corruption detected", e);
-      return INITIAL_PROJECTS;
-    }
-  });
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [inquiries, setInquiries] = useState<Inquiry[]>(() => {
-    try {
-      const saved = localStorage.getItem('coal_inquiries');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
+  // Auth state (Local only)
   const [isAdmin, setIsAdmin] = useState(() => {
     return localStorage.getItem('coal_admin_auth') === 'true';
   });
 
-  // Persistence Effects
+  // FETCH DATA FROM SUPABASE
   useEffect(() => {
-    localStorage.setItem('coal_projects', JSON.stringify(projects));
-  }, [projects]);
+    const fetchData = async () => {
+      // 1. Get Projects
+      const { data: projData, error: projError } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  useEffect(() => {
-    localStorage.setItem('coal_inquiries', JSON.stringify(inquiries));
-  }, [inquiries]);
+      if (projData) {
+        // Map snake_case DB to camelCase Types
+        const formattedProjects = projData.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          problem: p.problem,
+          solution: p.solution,
+          techUsed: p.tech_used || [],
+          imageUrl: p.image_url,
+          visitUrl: p.visit_url
+        }));
+        setProjects(formattedProjects);
+      }
 
-  // CRUD Operations
-  const addProject = (project: Project) => setProjects(prev => [...prev, project]);
-  
-  const deleteProject = (id: string) => {
-    if (window.confirm('Confirm deletion of this deployment unit?')) {
-      setProjects(prev => prev.filter(p => p.id !== id));
+      // 2. Get Inquiries (Only if Admin, but we fetch all for now to keep state simple)
+      if (isAdmin) {
+        const { data: inqData } = await supabase
+          .from('inquiries')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (inqData) {
+          const formattedInquiries = inqData.map((i: any) => ({
+            id: i.id,
+            name: i.name,
+            email: i.email,
+            budget: i.budget,
+            timeline: i.timeline,
+            message: i.message,
+            timestamp: new Date(i.created_at).getTime()
+          }));
+          setInquiries(formattedInquiries);
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [isAdmin]);
+
+  // Pass these simple functions to AdminDashboard to trigger re-fetches
+  const refreshData = async () => {
+    const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+    if (data) {
+      setProjects(data.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        problem: p.problem,
+        solution: p.solution,
+        techUsed: p.tech_used || [],
+        imageUrl: p.image_url,
+        visitUrl: p.visit_url
+      })));
     }
   };
 
-  const updateProject = (updated: Project) => {
-    setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
-  };
-
-  const addInquiry = (inquiry: Inquiry) => setInquiries(prev => [inquiry, ...prev]);
-
   return (
     <BrowserRouter>
-      <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-slate-300 font-sans selection:bg-orange-500 selection:text-white">
+      <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-slate-300 font-sans">
         <Navbar isAdmin={isAdmin} setIsAdmin={setIsAdmin} />
         
         <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home projects={projects} addInquiry={addInquiry} />} />
-            <Route path="/project/:id" element={<ProjectDetail projects={projects} />} />  
-            <Route 
-              path="/admin" 
-              element={
-                <AdminDashboard 
-                  projects={projects} 
-                  inquiries={inquiries} 
-                  isAdmin={isAdmin} 
-                  setIsAdmin={setIsAdmin}
-                  addProject={addProject}
-                  deleteProject={deleteProject}
-                  updateProject={updateProject}
-                />
-              } 
-            />
-          </Routes>
+          {loading ? (
+            <div className="h-screen flex items-center justify-center text-orange-500">INITIALIZING UPLINK...</div>
+          ) : (
+            <Routes>
+              <Route path="/" element={<Home projects={projects} addInquiry={() => {}} />} />
+              <Route path="/project/:id" element={<ProjectDetail projects={projects} />} />  
+              <Route 
+                path="/admin" 
+                element={
+                  <AdminDashboard 
+                    projects={projects} 
+                    inquiries={inquiries} 
+                    isAdmin={isAdmin} 
+                    setIsAdmin={setIsAdmin}
+                    onUpdate={refreshData} // We pass a refresh trigger instead of CRUD functions
+                  />
+                } 
+              />
+            </Routes>
+          )}
         </main>
 
         <Footer />

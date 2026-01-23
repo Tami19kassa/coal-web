@@ -1,26 +1,26 @@
 // src/pages/AdminDashboard.tsx
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, Trash2, Edit2, Layout, Mail, LogIn, X, Upload, ExternalLink } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Layout, Mail, X, Upload, ExternalLink, Loader2 } from 'lucide-react';
 import { Project, Inquiry } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface AdminDashboardProps {
   projects: Project[];
   inquiries: Inquiry[];
   isAdmin: boolean;
   setIsAdmin: (val: boolean) => void;
-  addProject: (p: Project) => void;
-  deleteProject: (id: string) => void;
-  updateProject: (p: Project) => void;
+  onUpdate: () => void; // Trigger to refresh App state
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
-  projects, inquiries, isAdmin, setIsAdmin, addProject, deleteProject, updateProject 
+  projects, inquiries, isAdmin, setIsAdmin, onUpdate 
 }) => {
   const [password, setPassword] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -35,19 +35,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     visitUrl: ''
   });
 
-  // --- Image Upload Logic ---
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- SUPABASE IMAGE UPLOAD ---
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 800 * 1024) {
-        alert("FILE REJECTED: Image is too large (>800KB). Compress it first.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm({ ...form, imageUrl: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // 1. Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // 2. Upload to 'images' bucket
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 3. Get Public URL
+      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+      
+      setForm(prev => ({ ...prev, imageUrl: data.publicUrl }));
+    } catch (err) {
+      alert('Upload failed: ' + (err as any).message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -62,22 +76,55 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const handleSaveProject = (e: React.FormEvent) => {
+  // --- SUPABASE SAVE (INSERT/UPDATE) ---
+  const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.imageUrl) {
-        alert("Deployment Halted: Image Resource Missing.");
-        return;
-    }
+    
+    const dbPayload = {
+      title: form.title,
+      description: form.description,
+      problem: form.problem,
+      solution: form.solution,
+      tech_used: form.techUsed,
+      image_url: form.imageUrl,
+      visit_url: form.visitUrl
+    };
 
-    if (editingId) {
-      updateProject({ ...form, id: editingId });
-      setEditingId(null);
-    } else {
-      addProject({ ...form, id: Date.now().toString() });
+    try {
+      if (editingId) {
+        // UPDATE
+        const { error } = await supabase
+          .from('projects')
+          .update(dbPayload)
+          .eq('id', editingId);
+        if (error) throw error;
+      } else {
+        // INSERT
+        const { error } = await supabase
+          .from('projects')
+          .insert([dbPayload]);
+        if (error) throw error;
+      }
+      
+      await onUpdate(); // Refresh the app
       setIsAdding(false);
+      resetForm();
+    } catch (err) {
+      alert('Database Operation Failed: ' + (err as any).message);
     }
-    resetForm();
   };
+
+  // --- SUPABASE DELETE ---
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Terminate this deployment?')) return;
+    try {
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) throw error;
+      await onUpdate();
+    } catch (err) {
+      alert('Delete failed: ' + (err as any).message);
+    }
+  }
 
   const resetForm = () => {
     setForm({
@@ -90,6 +137,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       imageUrl: '',
       visitUrl: ''
     });
+    setEditingId(null);
   };
 
   const startEdit = (p: Project) => {
@@ -120,11 +168,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <h1 className="text-4xl font-bold uppercase tracking-tighter text-white">Command <span className="text-orange-500">Center</span></h1>
-          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-            <button onClick={() => { resetForm(); setEditingId(null); setIsAdding(true); }} className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-xl flex items-center justify-center uppercase tracking-widest text-xs shadow-lg transition-all">
-              <PlusCircle className="mr-2 w-5 h-5" /> Deploy New
-            </button>
-          </div>
+          <button onClick={() => { resetForm(); setIsAdding(true); }} className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-xl flex items-center justify-center uppercase tracking-widest text-xs shadow-lg transition-all">
+            <PlusCircle className="mr-2 w-5 h-5" /> Deploy New
+          </button>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-10">
@@ -140,7 +186,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 <div className="flex space-x-3">
                   <button onClick={() => startEdit(project)} className="p-3 bg-white/5 rounded-xl hover:bg-blue-600/20 hover:text-blue-500 transition-colors"><Edit2 className="w-5 h-5" /></button>
-                  <button onClick={() => deleteProject(project.id)} className="p-3 bg-white/5 rounded-xl hover:bg-red-600/20 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
+                  <button onClick={() => handleDelete(project.id)} className="p-3 bg-white/5 rounded-xl hover:bg-red-600/20 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
                 </div>
               </motion.div>
             ))}
@@ -185,13 +231,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Visual Resource</label>
                     <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
                     <div onClick={() => fileInputRef.current?.click()} className="w-full h-[120px] bg-[#1a1a1a] border border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-orange-500 hover:bg-white/5 transition-all overflow-hidden relative">
-                      {form.imageUrl ? (
+                      {isUploading ? (
+                        <div className="flex items-center space-x-2 text-orange-500"><Loader2 className="animate-spin" /> <span>UPLOADING...</span></div>
+                      ) : form.imageUrl ? (
                         <>
                           <img src={form.imageUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-50" />
                           <div className="relative z-10 bg-black/70 px-3 py-1 rounded text-xs font-bold text-white flex items-center"><Edit2 className="w-3 h-3 mr-2" /> Change Image</div>
                         </>
                       ) : (
-                        <><Upload className="w-6 h-6 text-slate-500 mb-2" /><span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Upload (Max 800KB)</span></>
+                        <><Upload className="w-6 h-6 text-slate-500 mb-2" /><span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Upload Image</span></>
                       )}
                     </div>
                   </div>
@@ -208,13 +256,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Mission Brief (Summary)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Mission Brief</label>
                   <input required className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500" value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} />
                 </div>
 
                 <div className="space-y-4 p-4 rounded-xl bg-white/5 border border-white/5">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Case Study Analysis</label>
-                  
                   <div className="grid md:grid-cols-2 gap-4">
                     <textarea required rows={5} className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 resize-none" value={form.problem} onChange={(e) => setForm({...form, problem: e.target.value})} placeholder="Structural Deficit (Problem)..." />
                     <textarea required rows={5} className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500 resize-none" value={form.solution} onChange={(e) => setForm({...form, solution: e.target.value})} placeholder="Engineered Solution..." />
@@ -226,7 +273,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <input required className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500" value={form.techUsed.join(', ')} onChange={(e) => setForm({...form, techUsed: e.target.value.split(',').map(s => s.trim())})} />
                 </div>
 
-                <button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-xl transition-all uppercase tracking-widest shadow-lg hover:shadow-orange-500/20">
+                <button type="submit" disabled={isUploading} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-xl transition-all uppercase tracking-widest shadow-lg hover:shadow-orange-500/20 disabled:opacity-50">
                   {editingId ? 'Confirm Modification' : 'Initiate Deployment'}
                 </button>
               </form>
