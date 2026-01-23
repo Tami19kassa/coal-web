@@ -1,0 +1,7 @@
+{
+  "name": "Coal Web Development PLC",
+  "description": "Industrial Tech aesthetic agency website with dynamic portfolio, CMS admin panel, and interactive pricing calculator.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
