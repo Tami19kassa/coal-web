@@ -1,3 +1,4 @@
+// src/components/home/Hero.tsx
 import React, { useEffect } from 'react';
 import { motion, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
 import { ArrowRight, Crosshair, Zap } from 'lucide-react';
@@ -22,55 +23,87 @@ export const Hero = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // 1. THE SEARCHLIGHT EFFECT
-  // Instead of a mask image, we use a simple background gradient.
-  // Center = Transparent (shows Global BG), Edges = Black (hides it)
-  const background = useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, transparent 0%, #000000 100%)`;
+  // Transform Logic
+  const rotateX = useTransform(mouseY, [-500, 500], [5, -5]);
+  const rotateY = useTransform(mouseX, [-500, 500], [-5, 5]);
+
+  const maskImageValue = useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, transparent 0%, #000000 100%)`;
 
   return (
-    <section className="h-screen w-full relative flex items-center justify-center">
+    <section className="min-h-screen w-full relative flex items-center justify-center py-20 md:py-0 overflow-hidden" style={{ perspective: 1000 }}>
       
-      {/* 2. THE DARKNESS LAYER */}
-      {/* This sits ON TOP of the Global Background but UNDER the text. */}
-      {/* It follows the mouse to reveal the RootLayout image underneath. */}
+      {/* 1. GRID LAYER */}
       <motion.div 
-        className="absolute inset-0 z-0"
-        style={{ background }}
-      />
+        style={{ rotateX, rotateY, x: mouseX, y: mouseY }}
+        className="absolute inset-0 z-0 opacity-20 pointer-events-none"
+      >
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
+      </motion.div>
 
-      {/* Grid Overlay (Optional, adds texture) */}
-      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
+      {/* 2. SPOTLIGHT MASK */}
+      <motion.div 
+        className="absolute inset-0 z-0 bg-black"
+        style={{
+          maskImage: maskImageValue,
+          WebkitMaskImage: maskImageValue
+        }}
+      >
+        <div className="absolute inset-0 opacity-40 bg-[url('/bg-industrial.jpg')] bg-cover bg-center grayscale" />
+      </motion.div>
 
       {/* 3. CONTENT */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 w-full">
-        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col items-start">
-          <motion.div variants={fadeInUp} className="flex items-center space-x-4 mb-8 border-l-2 border-orange-500 pl-6">
-            <Zap className="text-orange-500 w-5 h-5 animate-pulse" />
-            <CipherReveal text="SYSTEM STATUS: ONLINE // SECURE UPLINK" className="text-xs font-bold text-orange-500 tracking-[0.2em]" delay={0.2} />
+        <motion.div 
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col items-start"
+        >
+          {/* TOP TAGLINE */}
+          <motion.div variants={fadeInUp} className="flex flex-wrap items-center gap-4 mb-6 md:mb-8 border-l-2 border-orange-500 pl-4 md:pl-6">
+            <Zap className="text-orange-500 w-4 h-4 md:w-5 md:h-5 animate-pulse shrink-0" />
+            <div className="text-[10px] md:text-xs font-bold text-orange-500 tracking-[0.2em] break-all">
+              <CipherReveal text="SYSTEM STATUS: ONLINE // SECURE UPLINK" delay={0.2} />
+            </div>
           </motion.div>
 
-          <div className="relative">
-            <Crosshair className="absolute -top-8 -left-8 text-white/10 w-8 h-8" />
-            <h1 className="text-7xl md:text-[10rem] font-black leading-[0.85] tracking-tighter text-white uppercase mix-blend-difference">
-              <div className="overflow-hidden">
+          {/* MAIN HEADLINE - RESPONSIVE FIX HERE */}
+          <div className="relative w-full">
+            <Crosshair className="absolute -top-4 -left-4 md:-top-8 md:-left-8 text-white/10 w-6 h-6 md:w-8 md:h-8" />
+            
+            {/* 
+               Using 'text-[13vw]' makes the font size relative to screen width.
+               It will never overflow.
+            */}
+            <h1 className="font-black leading-[0.85] tracking-tighter text-white uppercase mix-blend-difference w-full break-words">
+              
+              {/* LINE 1: ENGINEERING */}
+              <div className="overflow-hidden text-[13vw] md:text-[10rem]">
                 <CipherReveal text="ENGINEERING" className="block text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500" delay={0.5} />
               </div>
-              <div className="overflow-hidden flex items-center gap-4 md:gap-8">
-                <span className="text-orange-600">THE</span>
+              
+              {/* LINE 2: THE UNBREAKABLE */}
+              <div className="overflow-hidden flex flex-wrap items-baseline gap-2 md:gap-8 text-[13vw] md:text-[10rem]">
+                <span className="text-orange-600 text-[0.5em] md:text-[0.4em] self-center">THE</span>
                 <CipherReveal text="UNBREAKABLE" className="block text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500" delay={1.2} />
               </div>
             </h1>
           </div>
 
-          <div className="mt-12 w-full border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-end">
-            <motion.p variants={fadeInUp} className="max-w-xl text-slate-400 font-medium text-lg leading-relaxed">
+          {/* SUBTEXT & CTA */}
+          <div className="mt-8 md:mt-12 w-full border-t border-white/10 pt-8 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8">
+            <motion.p variants={fadeInUp} className="max-w-xl text-slate-400 font-medium text-sm md:text-lg leading-relaxed">
               We architect high-velocity digital infrastructure. <span className="text-white font-bold">Zero latency. Zero compromise.</span>
             </motion.p>
-            <motion.div variants={fadeInUp} className="mt-8 md:mt-0">
-              <a href="#projects" className="group relative inline-flex items-center justify-center px-12 py-6 border border-white/20 hover:border-orange-500 transition-all">
+            
+            <motion.div variants={fadeInUp} className="w-full lg:w-auto">
+              <a 
+                href="#projects" 
+                className="group relative w-full lg:w-auto inline-flex items-center justify-center px-8 md:px-12 py-4 md:py-6 border border-white/20 hover:border-orange-500 transition-all"
+              >
                 <div className="absolute inset-0 w-0 bg-orange-600 transition-all duration-300 group-hover:w-full opacity-10"></div>
-                <span className="relative text-white font-black uppercase tracking-[0.2em] flex items-center group-hover:text-orange-500 transition-colors">
-                  Initiate Protocol <ArrowRight className="ml-4 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <span className="relative text-white font-black uppercase tracking-[0.2em] flex items-center group-hover:text-orange-500 transition-colors text-xs md:text-base">
+                  Initiate Protocol <ArrowRight className="ml-3 md:ml-4 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </a>
             </motion.div>
@@ -78,8 +111,8 @@ export const Hero = () => {
         </motion.div>
       </div>
 
-      {/* Smooth Fade to Next Section */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
+      {/* Smooth Fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 md:h-32 bg-gradient-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
     </section>
   );
 };

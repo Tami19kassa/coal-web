@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Hammer, LogOut } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavbarProps {
@@ -13,31 +13,35 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 1. PUBLIC LINKS ONLY
   const navLinks = [
     { name: 'Home', path: '/' },
-    // Note: Since we are using HashRouter/BrowserRouter, you can just link to sections
-    // If you want smooth scroll to #projects, that requires a different approach, 
-    // but for now, let's keep it simple.
   ];
 
   const handleLogout = () => {
     setIsAdmin(false);
     localStorage.removeItem('coal_admin_auth');
     setIsOpen(false); 
-    navigate('/'); // Kick user back to home after logout
+    navigate('/'); 
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-md border-b border-white/5">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-2 group">
-            <div className="p-1.5 bg-orange-600 rounded-lg group-hover:bg-orange-500 transition-colors">
-              <Hammer className="text-white w-6 h-6" />
-            </div>
-            <span className="font-bold text-xl tracking-tighter uppercase text-white">
-              Coal<span className="text-orange-500">Dev</span>
+        <div className="flex justify-between items-center h-20"> {/* Increased height slightly for logo */}
+          
+          <Link to="/" className="flex items-center space-x-3 group">
+            {/* LOGO IMAGE REPLACEMENT */}
+            <img 
+              src="/logo.png" 
+              alt="Coal Web Development" 
+              className="h-12 w-auto object-contain" 
+            />
+            {/* 
+               Optional: If your logo image ALREADY has text inside it, 
+               you should delete this <span> block below so the text doesn't duplicate.
+            */}
+            <span className="font-bold text-xl tracking-tighter uppercase text-white group-hover:text-cyan-400 transition-colors">
+              Coal<span className="text-cyan-500">Dev</span>
             </span>
           </Link>
 
@@ -47,15 +51,14 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`text-sm font-bold uppercase tracking-widest transition-colors hover:text-orange-500 ${
-                  location.pathname === link.path ? 'text-orange-500' : 'text-slate-400'
+                className={`text-sm font-bold uppercase tracking-widest transition-colors hover:text-cyan-500 ${
+                  location.pathname === link.path ? 'text-cyan-500' : 'text-slate-400'
                 }`}
               >
                 {link.name}
               </Link>
             ))}
             
-            {/* 2. STEALTH LOGIC: Button only appears if you are ALREADY logged in */}
             {isAdmin && (
               <button
                 onClick={handleLogout}
@@ -94,7 +97,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
                   key={link.path}
                   to={link.path}
                   onClick={() => setIsOpen(false)}
-                  className="block text-base font-bold uppercase tracking-widest text-slate-400 hover:text-orange-500"
+                  className="block text-base font-bold uppercase tracking-widest text-slate-400 hover:text-cyan-500"
                 >
                   {link.name}
                 </Link>

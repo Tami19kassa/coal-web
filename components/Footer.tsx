@@ -1,16 +1,15 @@
-// src/components/Footer.tsx
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Hammer, Github, Twitter, Linkedin, Terminal, Activity, Power, Cpu, Wifi } from 'lucide-react';
+import { Github, Twitter, Linkedin, Terminal, Activity, Power, Cpu, Wifi } from 'lucide-react';
 
-// --- SUB-COMPONENT: ROTATING RADAR ---
+// --- SUB-COMPONENT: ROTATING RADAR (Updated to Cyan to match your logo) ---
 const Radar = () => (
-  <div className="relative w-16 h-16 border border-orange-500/30 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-sm overflow-hidden">
-    <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(234,88,12,0.5)_360deg)] animate-spin-slow opacity-50" />
+  <div className="relative w-16 h-16 border border-cyan-500/30 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-sm overflow-hidden">
+    <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(6,182,212,0.5)_360deg)] animate-spin-slow opacity-50" />
     <div className="absolute inset-[2px] bg-black rounded-full z-10" />
-    <div className="absolute w-full h-[1px] bg-orange-500/30 z-20" />
-    <div className="absolute h-full w-[1px] bg-orange-500/30 z-20" />
-    <div className="relative z-30 w-1 h-1 bg-orange-500 rounded-full animate-ping" />
+    <div className="absolute w-full h-[1px] bg-cyan-500/30 z-20" />
+    <div className="absolute h-full w-[1px] bg-cyan-500/30 z-20" />
+    <div className="relative z-30 w-1 h-1 bg-cyan-500 rounded-full animate-ping" />
   </div>
 );
 
@@ -28,7 +27,7 @@ const HexStream = () => {
   }, []);
 
   return (
-    <div className="font-mono text-[10px] text-orange-900/40 opacity-50 overflow-hidden h-32 flex flex-col-reverse select-none pointer-events-none">
+    <div className="font-mono text-[10px] text-cyan-900/40 opacity-50 overflow-hidden h-32 flex flex-col-reverse select-none pointer-events-none">
       {stream.map((hex, i) => (
         <div key={i} className="whitespace-nowrap">
           <span className="mr-4">DATA_PKT_{100 + i}:</span>
@@ -44,10 +43,10 @@ const Footer: React.FC = () => {
   return (
     <footer className="relative z-20 pt-24 pb-8 overflow-hidden border-t border-white/5">
       
-      {/* 1. ATMOSPHERIC GRADIENT (Transparency) */}
+      {/* ATMOSPHERIC GRADIENT */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none -z-10" />
       
-      {/* 2. BACKGROUND GRID */}
+      {/* BACKGROUND GRID */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20 pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4">
@@ -61,10 +60,15 @@ const Footer: React.FC = () => {
               <div className="flex items-center space-x-6 mb-8">
                 <Radar />
                 <div>
-                  <div className="flex items-center space-x-2 text-orange-500 mb-1">
-                    <Hammer className="w-5 h-5" />
+                  <div className="flex items-center space-x-3 mb-1">
+                    {/* LOGO IMAGE */}
+                    <img 
+                      src="/logo.png" 
+                      alt="Coal Web Development" 
+                      className="h-10 w-auto object-contain" 
+                    />
                     <span className="font-black text-2xl tracking-tighter uppercase text-white">
-                      Coal<span className="text-orange-600">Dev</span>
+                      Coal<span className="text-cyan-500">Dev</span>
                     </span>
                   </div>
                   <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
@@ -72,14 +76,14 @@ const Footer: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-slate-400 max-w-sm leading-relaxed text-sm font-medium border-l-2 border-orange-500/20 pl-4">
+              <p className="text-slate-400 max-w-sm leading-relaxed text-sm font-medium border-l-2 border-cyan-500/20 pl-4">
                 Architecting the digital backbone of heavy industry. 
                 We deploy high-availability systems for mission-critical environments.
               </p>
             </div>
           </div>
 
-          {/* Data Visualization Column (Animation) */}
+          {/* Data Visualization Column */}
           <div className="md:col-span-3 hidden md:block border-l border-white/5 pl-8">
             <div className="flex items-center space-x-2 mb-4 text-xs font-black uppercase text-slate-600 tracking-widest">
               <Cpu className="w-4 h-4" />
@@ -96,16 +100,16 @@ const Footer: React.FC = () => {
             ].map((col, i) => (
               <div key={i}>
                 <h4 className="font-black uppercase tracking-[0.2em] text-[10px] mb-6 text-white flex items-center">
-                  <Terminal className="w-3 h-3 mr-2 text-orange-600" /> {col.title}
+                  <Terminal className="w-3 h-3 mr-2 text-cyan-500" /> {col.title}
                 </h4>
                 <ul className="space-y-4 text-slate-500 text-xs font-mono font-bold">
                   {col.links.map((link) => (
                     <motion.li 
                       key={link}
-                      whileHover={{ x: 5, color: "#ea580c" }}
+                      whileHover={{ x: 5, color: "#06b6d4" }} // Cyan hover
                       className="cursor-pointer flex items-center"
                     >
-                      <span className="w-1 h-1 bg-slate-700 mr-3 rounded-full group-hover:bg-orange-500" />
+                      <span className="w-1 h-1 bg-slate-700 mr-3 rounded-full group-hover:bg-cyan-500" />
                       {link}
                     </motion.li>
                   ))}
@@ -136,7 +140,7 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Power className="w-3 h-3 text-orange-500" />
+            <Power className="w-3 h-3 text-cyan-500" />
             <span>© 2026 CoalDev PLC</span>
           </div>
         </div>
