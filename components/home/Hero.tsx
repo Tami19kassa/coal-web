@@ -1,6 +1,5 @@
-// src/components/home/Hero.tsx
 import React, { useEffect } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
 import { ArrowRight, Crosshair, Zap } from 'lucide-react';
 import { CipherReveal } from './CipherReveal';
 import { fadeInUp, staggerContainer } from '../../lib/animations';
@@ -8,12 +7,14 @@ import { fadeInUp, staggerContainer } from '../../lib/animations';
 export const Hero = () => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
+  
+  // Physics for the spotlight movement
   const mouseX = useSpring(x, { stiffness: 500, damping: 100 });
   const mouseY = useSpring(y, { stiffness: 500, damping: 100 });
 
   function handleMouseMove({ clientX, clientY }: MouseEvent) {
-    x.set(clientX - window.innerWidth / 2);
-    y.set(clientY - window.innerHeight / 2);
+    x.set(clientX);
+    y.set(clientY);
   }
 
   useEffect(() => {
@@ -21,27 +22,26 @@ export const Hero = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  const rotateX = useTransform(mouseY, [-500, 500], [5, -5]);
-  const rotateY = useTransform(mouseX, [-500, 500], [-5, 5]);
-  const maskImageValue = useTransform(
-    [mouseX, mouseY],
-    ([latestX, latestY]: any[]) => `radial-gradient(600px circle at ${latestX + window.innerWidth / 2}px ${latestY + window.innerHeight / 2}px, transparent, black)`
-  );
+  // 1. THE SEARCHLIGHT EFFECT
+  // Instead of a mask image, we use a simple background gradient.
+  // Center = Transparent (shows Global BG), Edges = Black (hides it)
+  const background = useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, transparent 0%, #000000 100%)`;
 
   return (
-    <section className="h-screen w-full relative flex items-center justify-center perspective-1000">
+    <section className="h-screen w-full relative flex items-center justify-center">
       
-      {/* Grid Layer */}
-      <motion.div style={{ rotateX, rotateY, x: mouseX, y: mouseY }} className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
-      </motion.div>
+      {/* 2. THE DARKNESS LAYER */}
+      {/* This sits ON TOP of the Global Background but UNDER the text. */}
+      {/* It follows the mouse to reveal the RootLayout image underneath. */}
+      <motion.div 
+        className="absolute inset-0 z-0"
+        style={{ background }}
+      />
 
-      {/* Spotlight Mask */}
-      <motion.div className="absolute inset-0 z-0 bg-black" style={{ maskImage: maskImageValue, WebkitMaskImage: maskImageValue }}>
-        <div className="absolute inset-0 opacity-40 bg-[url('/bg-industrial.jpg')] bg-cover bg-center grayscale" />
-      </motion.div>
+      {/* Grid Overlay (Optional, adds texture) */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
 
-      {/* Content */}
+      {/* 3. CONTENT */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 w-full">
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col items-start">
           <motion.div variants={fadeInUp} className="flex items-center space-x-4 mb-8 border-l-2 border-orange-500 pl-6">
@@ -78,7 +78,7 @@ export const Hero = () => {
         </motion.div>
       </div>
 
-      {/* --- THE FIX: SMOOTH FADE TO NEXT SECTION --- */}
+      {/* Smooth Fade to Next Section */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
     </section>
   );
