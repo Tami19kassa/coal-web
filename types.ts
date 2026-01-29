@@ -1,5 +1,3 @@
-// src/types.ts
-
 export interface Project {
   id: string;
   title: string;
@@ -19,4 +17,25 @@ export interface Inquiry {
   timeline: string;
   message: string;
   timestamp: number;
+}
+
+export interface SiteSettings {
+  id?: number;
+  email: string;
+  address: string;
+  phone: string;
+  tagline: string;
+}
+
+export interface SocialLink {
+  id: string;
+  platform: string;
+  url: string;
+  is_active: boolean;
+}
+
+export interface BudgetOption {
+  id: string;
+  label: string;
+  sort_order: number;
 }

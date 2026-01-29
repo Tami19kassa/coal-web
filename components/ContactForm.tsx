@@ -1,98 +1,63 @@
 // src/components/ContactForm.tsx
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { BudgetOption } from '../types';
 
 interface ContactFormProps {
   onSubmit: (inquiry: any) => void;
+  budgets?: BudgetOption[]; // Optional to avoid crash
 }
 
-const ContactForm: React.FC<ContactFormProps> = () => {
+const ContactForm: React.FC<ContactFormProps> = ({ budgets = [] }) => {
+  // Default first option if available, otherwise static default
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    budget: '$5k - $10k',
-    timeline: '1-3 months',
-    message: ''
+    name: '', email: '', budget: budgets[0]?.label || 'Negotiable', timeline: '1-3 months', message: ''
   });
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isError, setIsError] = useState(false);
+  const [status, setStatus] = useState<'idle'|'sending'|'success'|'error'>('idle');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsError(false);
-
+    setStatus('sending');
     try {
-      const { error } = await supabase.from('inquiries').insert([{
-        name: formData.name,
-        email: formData.email,
-        budget: formData.budget,
-        timeline: formData.timeline,
-        message: formData.message
-      }]);
-
+      const { error } = await supabase.from('inquiries').insert([formData]);
       if (error) throw error;
-
-      setIsSubmitted(true);
-      setFormData({
-        name: '',
-        email: '',
-        budget: '$5k - $10k',
-        timeline: '1-3 months',
-        message: ''
-      });
-      setTimeout(() => setIsSubmitted(false), 5000);
-
-    } catch (err) {
-      console.error(err);
-      setIsError(true);
-    }
+      setStatus('success');
+      setFormData({ name: '', email: '', budget: budgets[0]?.label || 'Negotiable', timeline: '1-3 months', message: '' });
+      setTimeout(() => setStatus('idle'), 5000);
+    } catch (err) { setStatus('error'); }
   };
+
+  const inputClass = "w-full bg-black border border-white/20 p-4 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm placeholder-slate-600 transition-colors";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* ... (Same inputs as before) ... */}
       <div className="grid md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Full Name</label>
-          <input required type="text" className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 transition-colors" placeholder="John Doe" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Email Endpoint</label>
-          <input required type="email" className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 transition-colors" placeholder="john@example.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
-        </div>
+        <input required placeholder="FULL NAME" className={inputClass} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+        <input required type="email" placeholder="EMAIL ENDPOINT" className={inputClass} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
       </div>
-
       <div className="grid md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Project Budget</label>
-          <select className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none" value={formData.budget} onChange={(e) => setFormData({...formData, budget: e.target.value})}>
-            <option>$2k - $5k</option>
-            <option>$5k - $10k</option>
-            <option>$10k - $25k</option>
-            <option>$25k+</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Project Timeline</label>
-          <select className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 transition-colors appearance-none" value={formData.timeline} onChange={(e) => setFormData({...formData, timeline: e.target.value})}>
-            <option>&lt; 1 month</option>
-            <option>1-3 months</option>
-            <option>3-6 months</option>
-            <option>Flexible</option>
-          </select>
-        </div>
+        <select className={inputClass} value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})}>
+          {budgets.length > 0 ? (
+            budgets.map(b => <option key={b.id} value={b.label}>{b.label}</option>)
+          ) : (
+            <option>Loading ETB Ranges...</option>
+          )}
+        </select>
+        {/* ... (Timeline select and Textarea remain same) ... */}
+        <select className={inputClass} value={formData.timeline} onChange={e => setFormData({...formData, timeline: e.target.value})}>
+          <option>&lt; 1 Month</option>
+          <option>1-3 Months</option>
+          <option>3-6 Months</option>
+          <option>Flexible</option>
+        </select>
       </div>
-
-      <div>
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Mission Parameters</label>
-        <textarea required rows={4} className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-orange-500 transition-colors resize-none" placeholder="Describe your project goals..." value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})}></textarea>
-      </div>
-
-      <button type="submit" className={`w-full py-4 rounded-xl font-bold uppercase tracking-widest transition-all ${isSubmitted ? 'bg-green-600 text-white cursor-default' : 'bg-orange-600 hover:bg-orange-500 text-white'}`} disabled={isSubmitted}>
-        {isSubmitted ? 'Mission Sent' : 'Transmit Data'}
+      <textarea required rows={4} placeholder="MISSION PARAMETERS (PROJECT DETAILS)" className={inputClass} value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})}></textarea>
+      
+      <button type="submit" disabled={status === 'sending' || status === 'success'} 
+        className={`w-full font-black py-4 uppercase tracking-widest transition-all ${status === 'success' ? 'bg-green-600 text-black' : 'bg-cyan-600 text-black hover:bg-white'}`}>
+        {status === 'sending' ? 'TRANSMITTING...' : status === 'success' ? 'UPLINK ESTABLISHED' : 'TRANSMIT DATA'}
       </button>
-
-      {isSubmitted && <p className="text-center text-xs text-green-500 font-bold uppercase animate-pulse">Communications link established.</p>}
-      {isError && <p className="text-center text-xs text-red-500 font-bold uppercase">Transmission Failed.</p>}
     </form>
   );
 };

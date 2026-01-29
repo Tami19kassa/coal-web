@@ -1,13 +1,12 @@
-// src/pages/ProjectDetail.tsx
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, useScroll, useTransform, animate } from 'framer-motion';
-import { ArrowLeft, ExternalLink, Activity, Hammer } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Activity, Hammer, Loader2 } from 'lucide-react';
 import { Project } from '../types';
 import { pageTransition, fadeInUp } from '../lib/animations';
+import { supabase } from '../lib/supabase'; // Import supabase directly
 
-interface ProjectDetailProps { projects: Project[]; }
-
+// Counter Component
 const Counter = ({ from, to, label }: { from: number; to: number; label: string }) => {
   const [count, setCount] = useState(from);
   useEffect(() => {
@@ -15,30 +14,71 @@ const Counter = ({ from, to, label }: { from: number; to: number; label: string 
     return () => controls.stop();
   }, [from, to]);
   return (
-    <div className="text-center p-6 border border-white/5 bg-black/40 backdrop-blur-sm">
-      <div className="text-4xl font-black text-orange-500 mb-1 font-mono">{count}{label.includes('ms') ? 'ms' : '%'}</div>
+    <div className="text-center p-6 border border-cyan-500/20 bg-black/40 backdrop-blur-sm">
+      <div className="text-4xl font-black text-cyan-500 mb-1 font-mono">{count}{label.includes('ms') ? 'ms' : '%'}</div>
       <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</div>
     </div>
   );
 };
 
-const ProjectDetail: React.FC<ProjectDetailProps> = ({ projects }) => {
-  const { id } = useParams();
-  const project = projects.find(p => p.id === id);
+// We don't need props anymore, we fetch internally
+const ProjectDetail: React.FC<any> = () => {
+  const { id } = useParams<{ id: string }>();
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  
   const { scrollY } = useScroll();
   const imgY = useTransform(scrollY, [0, 500], [0, 100]);
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { 
+    window.scrollTo(0, 0);
+    
+    // FETCH DATA DIRECTLY
+    const fetchProject = async () => {
+      if (!id) return;
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (data) {
+        setProject({
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          problem: data.problem,
+          solution: data.solution,
+          techUsed: data.tech_used || [],
+          imageUrl: data.image_url,
+          visitUrl: data.visit_url
+        });
+      }
+      setLoading(false);
+    };
 
-  if (!project) return <div className="pt-32 text-center text-white">DATA CORRUPTION: PROJECT NOT FOUND</div>;
+    fetchProject();
+  }, [id]);
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <Loader2 className="w-10 h-10 text-cyan-500 animate-spin" />
+    </div>
+  );
+
+  if (!project) return (
+    <div className="pt-32 text-center text-white min-h-screen flex flex-col items-center justify-center">
+      <h2 className="text-2xl font-black mb-4">DATA CORRUPTION: PROJECT NOT FOUND</h2>
+      <Link to="/" className="text-cyan-500 hover:underline">RETURN TO BASE</Link>
+    </div>
+  );
 
   return (
-    // FIX: Removed opaque background. Added semi-transparent black.
-    <motion.div initial="initial" animate="animate" exit="exit" variants={pageTransition} className="pt-24 min-h-screen bg-black/80">
+    <motion.div initial="initial" animate="animate" exit="exit" variants={pageTransition} className="pt-24 min-h-screen bg-black/90">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <motion.div variants={fadeInUp} custom={0} className="mb-12">
-          <Link to="/" className="inline-flex items-center text-slate-500 hover:text-orange-500 font-black uppercase tracking-widest text-xs transition-colors group">
+          <Link to="/" className="inline-flex items-center text-slate-500 hover:text-cyan-500 font-black uppercase tracking-widest text-xs transition-colors group">
             <ArrowLeft className="mr-2 w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Return to Base
           </Link>
         </motion.div>
@@ -47,7 +87,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projects }) => {
           <motion.div variants={fadeInUp} custom={1}>
             <div className="flex flex-wrap gap-2 mb-6">
               {project.techUsed.map(tech => (
-                <span key={tech} className="px-3 py-1 border border-orange-500/30 text-orange-500 text-[10px] font-black uppercase tracking-widest">
+                <span key={tech} className="px-3 py-1 border border-cyan-500/30 text-cyan-500 text-[10px] font-black uppercase tracking-widest">
                   {tech}
                 </span>
               ))}
@@ -59,19 +99,19 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projects }) => {
               {project.description}
             </p>
             <a href={project.visitUrl} target="_blank" rel="noopener noreferrer" 
-               className="inline-flex items-center bg-white text-black px-8 py-4 font-black uppercase tracking-widest hover:bg-orange-600 hover:text-white transition-all shadow-xl">
+               className="inline-flex items-center bg-white text-black px-8 py-4 font-black uppercase tracking-widest hover:bg-cyan-600 hover:text-white transition-all shadow-xl">
               Live Deployment <ExternalLink className="ml-2 w-5 h-5" />
             </a>
           </motion.div>
 
           <motion.div variants={fadeInUp} custom={2} className="relative aspect-video bg-zinc-900/50 border border-white/10 overflow-hidden group">
             <motion.div style={{ y: imgY }} className="absolute inset-0">
-              <img src={project.imageUrl} alt={project.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700" />
+              <img src={project.imageUrl} alt={project.title} className="w-full h-full object-cover opacity-100" />
             </motion.div>
             <motion.div 
               animate={{ top: ['0%', '100%', '0%'] }} 
               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className="absolute left-0 right-0 h-[2px] bg-orange-500 shadow-[0_0_20px_#f97316] z-10"
+              className="absolute left-0 right-0 h-[2px] bg-cyan-500 shadow-[0_0_20px_#06b6d4] z-10"
             />
           </motion.div>
         </div>
