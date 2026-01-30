@@ -13,7 +13,6 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 1. UPDATED LINKS (Using IDs for scrolling)
   const navLinks = [
     { name: 'Home', path: '/', icon: Terminal },
     { name: 'Deployments', path: '/#projects', icon: Activity },
@@ -27,35 +26,46 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
     navigate('/'); 
   };
 
-  // Helper to handle smooth scrolling or navigation
   const handleNavClick = (path: string) => {
-    setIsOpen(false);
+    setIsOpen(false); // Close mobile menu immediately
+
+    // 1. Handle "Home" click (Scroll to top)
+    if (path === '/') {
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 2. Handle Section Clicks (#projects, #contact)
     if (path.startsWith('/#')) {
       const elementId = path.replace('/#', '');
-      // If we are already on home, just scroll
+      
       if (location.pathname === '/') {
+        // If already on Home, just scroll
         const element = document.getElementById(elementId);
         if (element) element.scrollIntoView({ behavior: 'smooth' });
       } else {
-        // If on another page, navigate to home then hash
+        // If on Project Page, go Home first, then scroll
         navigate('/');
+        // Wait for page transition then scroll
         setTimeout(() => {
           const element = document.getElementById(elementId);
           if (element) element.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        }, 300);
       }
-    } else {
-      navigate(path);
     }
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/5">
+    // FIX: z-[100] ensures it is clickable above the video/sparks
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           
           {/* LOGO */}
-          <Link to="/" className="flex items-center space-x-3 group">
+          <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center space-x-3 group cursor-pointer">
             <img 
               src="/logo.png" 
               alt="Coal Web Development" 
@@ -72,9 +82,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
               <button
                 key={link.name}
                 onClick={() => handleNavClick(link.path)}
-                className={`text-xs font-bold uppercase tracking-[0.2em] transition-all hover:text-cyan-500 flex items-center group ${
-                  location.hash === link.path.replace('/', '') ? 'text-cyan-500' : 'text-slate-400'
-                }`}
+                className="text-xs font-bold uppercase tracking-[0.2em] transition-all hover:text-cyan-500 flex items-center group text-slate-400"
               >
                 <span className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300 text-cyan-500 mr-2">
                   &gt;
@@ -98,7 +106,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
           <div className="md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-cyan-500 hover:text-white transition-colors"
+              className="text-cyan-500 hover:text-white transition-colors p-2"
             >
               {isOpen ? <X className="w-8 h-8" /> : <Menu className="w-8 h-8" />}
             </button>
@@ -113,7 +121,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-black border-t border-cyan-500/30 overflow-hidden"
+            className="md:hidden bg-black border-t border-cyan-500/30 overflow-hidden shadow-2xl"
           >
             <div className="px-6 pt-6 pb-8 space-y-6">
               {navLinks.map((link) => (
