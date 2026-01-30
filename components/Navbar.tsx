@@ -26,40 +26,56 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
     navigate('/'); 
   };
 
-  const handleNavClick = (path: string) => {
-    setIsOpen(false); // Close mobile menu immediately
+  // --- IMPROVED SCROLL LOGIC ---
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      // Get the position relative to the viewport
+      const headerOffset = 100; // Height of navbar + some padding
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
-    // 1. Handle "Home" click (Scroll to top)
-    if (path === '/') {
-      if (location.pathname !== '/') {
-        navigate('/');
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    // 2. Handle Section Clicks (#projects, #contact)
-    if (path.startsWith('/#')) {
-      const elementId = path.replace('/#', '');
-      
-      if (location.pathname === '/') {
-        // If already on Home, just scroll
-        const element = document.getElementById(elementId);
-        if (element) element.scrollIntoView({ behavior: 'smooth' });
-      } else {
-        // If on Project Page, go Home first, then scroll
-        navigate('/');
-        // Wait for page transition then scroll
-        setTimeout(() => {
-          const element = document.getElementById(elementId);
-          if (element) element.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      }
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
     }
   };
 
+  const handleNavClick = (path: string) => {
+    setIsOpen(false); // Close menu first
+
+    // Wait 300ms for the mobile menu to close animation to finish
+    // This prevents the page from jumping to the wrong spot while layout shifts
+    setTimeout(() => {
+      
+      // 1. Handle "Home" click
+      if (path === '/') {
+        if (location.pathname !== '/') {
+          navigate('/');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // 2. Handle Section Clicks
+      if (path.startsWith('/#')) {
+        const elementId = path.replace('/#', '');
+        
+        if (location.pathname === '/') {
+          scrollToSection(elementId);
+        } else {
+          navigate('/');
+          // If changing pages, wait a bit for new page to load then scroll
+          setTimeout(() => scrollToSection(elementId), 100);
+        }
+      } else {
+        navigate(path);
+      }
+    }, 300); // 300ms delay matches the menu close animation
+  };
+
   return (
-    // FIX: z-[100] ensures it is clickable above the video/sparks
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
@@ -121,6 +137,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAdmin, setIsAdmin }) => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }} // Matches the timeout in handleNavClick
             className="md:hidden bg-black border-t border-cyan-500/30 overflow-hidden shadow-2xl"
           >
             <div className="px-6 pt-6 pb-8 space-y-6">
