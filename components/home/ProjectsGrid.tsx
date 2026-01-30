@@ -22,26 +22,32 @@ export const ProjectsGrid: React.FC<ProjectsGridProps> = ({ projects }) => {
   return (
     <section id="projects" className="py-32 px-4 relative z-10 bg-transparent">
       <div className="max-w-7xl mx-auto">
+        
+        {/* Header */}
         <motion.div 
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="flex flex-col md:flex-row items-end justify-between mb-24 gap-8"
+          className="flex flex-col md:flex-row items-start md:items-end justify-between mb-16 md:mb-24 gap-8"
         >
-          <motion.div variants={fadeInUp}>
+          <motion.div variants={fadeInUp} className="w-full">
             <p className="text-cyan-500 font-black tracking-[0.5em] text-[10px] mb-4 uppercase animate-pulse">Status: Operational</p>
-            <h2 className="text-6xl md:text-8xl font-black tracking-tighter uppercase text-white leading-none">
+            
+            {/* Kept the responsive text fix */}
+            <h2 className="text-[11vw] md:text-8xl font-black tracking-tighter uppercase text-white leading-[0.9]">
               Active <br /> <span className="text-cyan-600">Deployments</span>
             </h2>
           </motion.div>
+
           <motion.div variants={fadeInUp}>
-            <Link to="/admin" className="px-8 py-4 border-2 border-white/10 text-white font-black hover:bg-cyan-600 hover:border-cyan-600 hover:text-black transition-all uppercase tracking-widest text-[10px]">
+            <Link to="/admin" className="inline-block px-8 py-4 border-2 border-white/10 text-white font-black hover:bg-cyan-600 hover:border-cyan-600 hover:text-black transition-all uppercase tracking-widest text-[10px] whitespace-nowrap">
               Uplink_Console
             </Link>
           </motion.div>
         </motion.div>
 
+        {/* Projects Grid */}
         <motion.div 
           variants={staggerContainer}
           initial="hidden"
@@ -58,8 +64,9 @@ export const ProjectsGrid: React.FC<ProjectsGridProps> = ({ projects }) => {
             >
               <Link to={`/project/${project.id}`}>
                 {/* 
-                   FIX: Removed 'grayscale' and 'group-hover:grayscale-0'. 
-                   Images are now full color always.
+                   FIX IS HERE: 
+                   Removed 'grayscale' class. 
+                   Images will now show in full color immediately.
                 */}
                 <div className="aspect-video overflow-hidden transition-all duration-700">
                   <img 
@@ -67,14 +74,14 @@ export const ProjectsGrid: React.FC<ProjectsGridProps> = ({ projects }) => {
                     alt={project.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
                   />
-                  {/* Reduced overlay opacity so images are brighter */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-40" />
+                  {/* Reduced overlay opacity significantly so image pops */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-30" />
                 </div>
 
                 <div className="p-8 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-[2px] h-0 bg-cyan-500 group-hover:h-full transition-all duration-500" />
                   
-                  <h3 className="text-3xl font-black uppercase tracking-tight text-white group-hover:text-cyan-400 transition-colors">
+                  <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white group-hover:text-cyan-400 transition-colors">
                     {project.title}
                   </h3>
                   
