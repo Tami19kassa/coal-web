@@ -12,7 +12,7 @@ interface ContactSectionProps {
 }
 
 export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, settings, budgets }) => {
-  // Safe accessors for arrays to prevent crashes or hiding
+  // Safe accessors with default empty arrays
   const emails = settings?.emails || [];
   const phones = settings?.phones || [];
 
@@ -42,7 +42,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
 
         <div className="grid lg:grid-cols-5 gap-8">
           
-          {/* Left Panel: Dynamic Contact Info */}
+          {/* Left Panel: Contact Info */}
           <motion.div 
             variants={staggerContainer}
             initial="hidden"
@@ -50,7 +50,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
             viewport={{ once: true }}
             className="lg:col-span-2 space-y-4"
           >
-            {/* EMAILS LIST */}
+            {/* EMAILS */}
             <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
               <div className="p-3 bg-black border border-white/10 text-cyan-500 mt-1">
                 <Cpu className="w-6 h-6" />
@@ -64,43 +64,43 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
                     </div>
                   ))
                 ) : (
-                  <div className="font-mono text-white font-bold">info@coaldev.et</div>
+                  <div className="font-mono text-white/30 italic text-xs">No Active Email Configured</div>
                 )}
               </div>
             </motion.div>
 
-            {/* PHONES LIST - FIXED RENDERING LOGIC */}
-            {phones.length > 0 && (
-              <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
-                <div className="p-3 bg-black border border-white/10 text-cyan-500 mt-1">
-                  <Phone className="w-6 h-6" />
-                </div>
-                <div className="flex-grow">
-                  <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Voice Lines</div>
-                  {phones.map((phone, i) => (
+            {/* PHONES - ALWAYS SHOWS NOW, WITH PLACEHOLDER IF EMPTY */}
+            <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
+              <div className="p-3 bg-black border border-white/10 text-cyan-500 mt-1">
+                <Phone className="w-6 h-6" />
+              </div>
+              <div className="flex-grow">
+                <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Voice Lines</div>
+                {phones.length > 0 ? (
+                  phones.map((phone, i) => (
                     <div key={i} className="font-mono text-white font-bold mb-1 border-b border-white/5 pb-1 last:border-0 last:pb-0">
                       {phone}
                     </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
+                  ))
+                ) : (
+                  <div className="font-mono text-white/30 italic text-xs">NO ACTIVE VOICE LINE</div>
+                )}
+              </div>
+            </motion.div>
 
             {/* ADDRESS */}
-            {settings?.address && (
-              <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-center space-x-4 hover:border-cyan-500/30 transition-colors">
-                <div className="p-3 bg-black border border-white/10 text-cyan-500">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Physical Coordinates</div>
-                  <div className="font-mono text-white font-bold">{settings.address}</div>
-                </div>
-              </motion.div>
-            )}
+            <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-center space-x-4 hover:border-cyan-500/30 transition-colors">
+              <div className="p-3 bg-black border border-white/10 text-cyan-500">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Physical Coordinates</div>
+                <div className="font-mono text-white font-bold">{settings?.address || "Location Unavailable"}</div>
+              </div>
+            </motion.div>
           </motion.div>
 
-          {/* Right Panel: The Form */}
+          {/* Right Panel: Form */}
           <motion.div 
             variants={fadeInUp}
             initial="hidden"

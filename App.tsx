@@ -12,9 +12,16 @@ import { supabase } from './lib/supabase';
 const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  
+  // FIX: Initialize with ARRAYS to match new DB structure
   const [settings, setSettings] = useState<SiteSettings>({
-    email: 'info@coaldev.et', address: 'Addis Ababa', phone: '', tagline: 'Forging digital excellence.'
+    id: 0,
+    emails: ['info@coaldev.et'], 
+    phones: ['+251 911 000 000'],
+    address: 'Addis Ababa, Ethiopia',
+    tagline: 'Forging digital excellence.'
   });
+  
   const [socials, setSocials] = useState<SocialLink[]>([]);
   const [budgets, setBudgets] = useState<BudgetOption[]>([]);
   
@@ -27,7 +34,12 @@ const App: React.FC = () => {
 
     // 2. Settings
     const { data: s } = await supabase.from('site_settings').select('*').single();
-    if (s) setSettings(s);
+    // FIX: Ensure arrays exist even if DB returns null
+    if (s) setSettings({
+      ...s,
+      emails: s.emails || [],
+      phones: s.phones || []
+    });
 
     // 3. Socials
     const { data: soc } = await supabase.from('social_links').select('*').order('platform');
