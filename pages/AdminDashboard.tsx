@@ -22,20 +22,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<'projects' | 'config' | 'form'>('projects');
   
-  // Project State
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [projectForm, setProjectForm] = useState<Project>({
     id: '', title: '', description: '', problem: '', solution: '', techUsed: [], imageUrl: '', visitUrl: ''
   });
 
-  // Config State
   const [configForm, setConfigForm] = useState<SiteSettings>(settings);
   const [socialForm, setSocialForm] = useState<SocialLink[]>(socials);
   
-  // Budget State
   const [newBudget, setNewBudget] = useState({ project_type: '', amount: '', timeline: '' });
 
   useEffect(() => {
@@ -53,7 +51,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // --- CONFIG HANDLERS ---
   const handleArrayChange = (field: 'emails' | 'phones', index: number, value: string) => {
-    // Ensure the array exists before copying
     const currentArray = configForm[field] || [];
     const updated = [...currentArray];
     updated[index] = value;
@@ -73,33 +70,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const saveConfig = async () => {
     try {
-      // FIX IS HERE: Remove 'id' from the object before sending to Supabase
-      // The database forbids updating the 'id' column
+      // Clean ID for update
       const { id, ...updates } = configForm;
-
-      const { error } = await supabase
-        .from('site_settings')
-        .update(updates) // Send only the data fields (emails, phones, address, tagline)
-        .eq('id', settings.id); 
-
+      const { error } = await supabase.from('site_settings').update(updates).eq('id', settings.id);
       if (error) throw error;
       
-      // 2. Save Socials
       for (const link of socialForm) {
         await supabase.from('social_links').update({ url: link.url, is_active: link.is_active }).eq('id', link.id);
       }
-      
       await onUpdate();
-      alert("GLOBAL CONFIGURATION SAVED SUCCESSFULLY");
+      alert("CONFIGURATION UPDATED");
     } catch (err: any) { alert("Save Failed: " + err.message); }
   };
 
-  // --- BUDGET HANDLERS ---
+  // --- FIXED BUDGET HANDLER ---
   const addBudget = async () => {
-    if (!newBudget.project_type || !newBudget.amount) return alert("Fill all fields");
-    await supabase.from('budget_options').insert([newBudget]);
-    setNewBudget({ project_type: '', amount: '', timeline: '' });
-    await onUpdate();
+    // 1. Validation
+    if (!newBudget.project_type || !newBudget.amount || !newBudget.timeline) {
+      return alert("ERROR: Please fill all budget fields (Type, Amount, Timeline).");
+    }
+
+    try {
+      // 2. Insert with Sort Order
+      const { error } = await supabase.from('budget_options').insert([{
+        ...newBudget,
+        sort_order: budgets.length + 1
+      }]);
+
+      if (error) throw error;
+
+      // 3. Clear State ONLY on success
+      setNewBudget({ project_type: '', amount: '', timeline: '' });
+      
+      // 4. Refresh Data
+      await onUpdate();
+      
+    } catch (err: any) {
+      alert("Budget Insert Failed: " + err.message);
+    }
   };
 
   const deleteBudget = async (id: string) => {
@@ -114,8 +122,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsUploading(true);
     try {
       const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: upErr } = await supabase.storage.from('images').upload(fileName, file);
-      if (upErr) throw upErr;
+      const { error } = await supabase.storage.from('images').upload(fileName, file);
+      if (error) throw error;
       const { data } = supabase.storage.from('images').getPublicUrl(fileName);
       setProjectForm(prev => ({ ...prev, imageUrl: data.publicUrl }));
     } catch (err: any) { alert('Upload failed: ' + err.message); } 
@@ -124,10 +132,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const saveProject = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { id, ...rest } = projectForm; // Sanitize ID out if needed, though we use editingId
     const payload = {
-      title: projectForm.title, description: projectForm.description, problem: projectForm.problem, 
-      solution: projectForm.solution, tech_used: projectForm.techUsed, image_url: projectForm.imageUrl, visit_url: projectForm.visitUrl
+      title: projectForm.title, 
+      description: projectForm.description, 
+      problem: projectForm.problem, 
+      solution: projectForm.solution, 
+      tech_used: projectForm.techUsed, 
+      image_url: projectForm.imageUrl, 
+      visit_url: projectForm.visitUrl
     };
+
     try {
       if (editingId) await supabase.from('projects').update(payload).eq('id', editingId);
       else await supabase.from('projects').insert([payload]);
@@ -170,7 +185,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <motion.div initial="initial" animate="animate" exit="exit" variants={pageTransition} className="pt-24 min-h-screen bg-black/90 font-mono text-sm">
       <div className="max-w-7xl mx-auto px-4 pb-20">
         
-        {/* Header & Tabs */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-white/10 pb-6 gap-6">
           <h1 className="text-4xl font-black uppercase tracking-tighter text-white flex items-center">
             <Unlock className="mr-4 text-green-500" /> Command <span className="text-cyan-500">Center</span>
@@ -182,7 +196,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        {/* --- PROJECTS TAB --- */}
+        {/* PROJECTS TAB */}
         {activeTab === 'projects' && (
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-4">
@@ -207,7 +221,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center"><Mail className="w-4 h-4 mr-2" /> Signals</div>
               <div className="flex-grow overflow-y-auto space-y-2 pr-2">
                 {inquiries.map((i) => (
-                  <div key={i.id} className="p-4 border-l-2 border-cyan-500 bg-white/5">
+                  <div key={i.id} className="p-4 border-l-2 border-cyan-500 bg-white/5 mb-2">
                     <div className="flex justify-between text-[10px] text-slate-400 uppercase mb-2">
                       <span>{i.name}</span>
                       <span>{new Date(i.timestamp).toLocaleDateString()}</span>
@@ -224,7 +238,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* --- CONFIG TAB --- */}
+        {/* CONFIG TAB */}
         {activeTab === 'config' && (
           <div className="max-w-4xl mx-auto grid lg:grid-cols-2 gap-8">
             <div className="bg-black/50 border border-white/10 p-8">
@@ -254,7 +268,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Physical Coordinates</label>
+                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Address</label>
                   <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={configForm.address} onChange={e => setConfigForm({...configForm, address: e.target.value})} />
                 </div>
                 <div>
@@ -262,11 +276,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={configForm.tagline} onChange={e => setConfigForm({...configForm, tagline: e.target.value})} />
                 </div>
               </div>
-              
               <div className="mt-8">
-                <button onClick={saveConfig} className="w-full bg-green-600 text-black font-bold px-8 py-4 uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center">
-                  <Save className="mr-2 w-5 h-5" /> Commit Changes
-                </button>
+                <button onClick={saveConfig} className="w-full bg-green-600 text-black font-bold px-8 py-4 uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center"><Save className="mr-2 w-5 h-5" /> Commit Changes</button>
               </div>
             </div>
 
@@ -275,25 +286,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                 {socialForm.map((link, i) => (
                   <div key={link.id} className="flex items-center gap-4 p-3 border border-white/5 bg-white/5">
-                    <button onClick={() => {
-                      const newSocials = [...socialForm];
-                      newSocials[i].is_active = !newSocials[i].is_active;
-                      setSocialForm(newSocials);
-                    }} className={`transition-colors ${link.is_active ? 'text-green-500' : 'text-slate-600'}`}>
+                    <button onClick={() => toggleSocial(link.id)} className={`transition-colors ${link.is_active ? 'text-green-500' : 'text-slate-600'}`}>
                       {link.is_active ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
                     </button>
                     <div className="flex-grow">
                       <div className="text-[10px] font-bold text-slate-500 uppercase">{link.platform}</div>
-                      <input 
-                        className="w-full bg-transparent border-b border-white/10 text-xs text-white focus:border-cyan-500 outline-none py-1" 
-                        placeholder="URL..."
-                        value={link.url}
-                        onChange={(e) => {
-                          const newSocials = [...socialForm];
-                          newSocials[i].url = e.target.value;
-                          setSocialForm(newSocials);
-                        }}
-                      />
+                      <input className="w-full bg-transparent border-b border-white/10 text-xs text-white focus:border-cyan-500 outline-none py-1" placeholder="URL..." value={link.url} onChange={(e) => updateSocialUrl(link.id, e.target.value)} />
                     </div>
                   </div>
                 ))}
@@ -302,20 +300,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* --- BUDGET FORM TAB --- */}
+        {/* BUDGET TAB */}
         {activeTab === 'form' && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-black/50 border border-white/10 p-8">
               <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><DollarSign className="mr-3 text-cyan-500" /> Project Cost Calculator</h3>
-              
               <div className="grid md:grid-cols-4 gap-4 mb-8 items-end">
                 <div className="md:col-span-1">
-                  <label className="text-[10px] uppercase text-slate-500">Project Type</label>
+                  <label className="text-[10px] uppercase text-slate-500">Type</label>
                   <input className="w-full bg-black border border-white/20 p-3 text-white focus:border-cyan-500 outline-none" placeholder="e.g. Website" value={newBudget.project_type} onChange={e => setNewBudget({...newBudget, project_type: e.target.value})} />
                 </div>
                 <div className="md:col-span-1">
-                  <label className="text-[10px] uppercase text-slate-500">Amount (ETB)</label>
-                  <input className="w-full bg-black border border-white/20 p-3 text-white" placeholder="50k - 100k" value={newBudget.amount} onChange={e => setNewBudget({...newBudget, amount: e.target.value})} />
+                  <label className="text-[10px] uppercase text-slate-500">Amount</label>
+                  <input className="w-full bg-black border border-white/20 p-3 text-white" placeholder="50k ETB" value={newBudget.amount} onChange={e => setNewBudget({...newBudget, amount: e.target.value})} />
                 </div>
                 <div className="md:col-span-1">
                   <label className="text-[10px] uppercase text-slate-500">Timeline</label>
@@ -323,7 +320,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 <button onClick={addBudget} className="bg-cyan-600 text-black font-bold h-[46px] uppercase text-xs flex items-center justify-center">Add</button>
               </div>
-
               <div className="space-y-2">
                 {budgets.map((b) => (
                   <div key={b.id} className="flex justify-between items-center p-4 bg-white/5 border border-white/10">
@@ -340,7 +336,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* ... (Modal logic remains) ... */}
+        {/* PROJECT MODAL */}
         <AnimatePresence>
           {isAdding && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
@@ -350,7 +346,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X /></button>
                 </div>
                 <form onSubmit={saveProject} className="space-y-6">
-                  {/* ... Project Form Fields ... */}
                   <div className="grid md:grid-cols-2 gap-6">
                     <input placeholder="PROJECT TITLE" required className="bg-black border border-white/10 p-4 text-white focus:border-cyan-500 outline-none" value={projectForm.title} onChange={e => setProjectForm({...projectForm, title: e.target.value})} />
                     <input placeholder="EXTERNAL LINK" required className="bg-black border border-white/10 p-4 text-white focus:border-cyan-500 outline-none" value={projectForm.visitUrl} onChange={e => setProjectForm({...projectForm, visitUrl: e.target.value})} />

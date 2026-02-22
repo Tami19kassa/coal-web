@@ -12,6 +12,10 @@ interface ContactSectionProps {
 }
 
 export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, settings, budgets }) => {
+  // Safe accessors for arrays to prevent crashes or hiding
+  const emails = settings?.emails || [];
+  const phones = settings?.phones || [];
+
   return (
     <section id="contact" className="py-40 px-4 relative z-10">
       <div className="max-w-7xl mx-auto">
@@ -53,8 +57,8 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
               </div>
               <div className="flex-grow">
                 <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Email Uplinks</div>
-                {settings?.emails && settings.emails.length > 0 ? (
-                  settings.emails.map((email, i) => (
+                {emails.length > 0 ? (
+                  emails.map((email, i) => (
                     <div key={i} className="font-mono text-white font-bold break-all mb-1 border-b border-white/5 pb-1 last:border-0 last:pb-0">
                       {email}
                     </div>
@@ -65,15 +69,15 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
               </div>
             </motion.div>
 
-            {/* PHONES LIST */}
-            {settings?.phones && settings.phones.length > 0 && (
+            {/* PHONES LIST - FIXED RENDERING LOGIC */}
+            {phones.length > 0 && (
               <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
                 <div className="p-3 bg-black border border-white/10 text-cyan-500 mt-1">
                   <Phone className="w-6 h-6" />
                 </div>
                 <div className="flex-grow">
                   <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Voice Lines</div>
-                  {settings.phones.map((phone, i) => (
+                  {phones.map((phone, i) => (
                     <div key={i} className="font-mono text-white font-bold mb-1 border-b border-white/5 pb-1 last:border-0 last:pb-0">
                       {phone}
                     </div>
@@ -104,7 +108,6 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
             viewport={{ once: true }}
             className="lg:col-span-3 bg-black/40 backdrop-blur-md border-2 border-white/10 p-8 md:p-12 relative overflow-hidden"
           >
-            {/* Decorative Corner bits */}
             <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-cyan-500" />
             <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-cyan-500" />
             
@@ -113,7 +116,6 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
               <span className="text-xs font-mono text-green-500">TERMINAL_ACTIVE</span>
             </div>
 
-            {/* Pass Budgets to Form */}
             <ContactForm onSubmit={addInquiry} budgets={budgets} />
           </motion.div>
 
