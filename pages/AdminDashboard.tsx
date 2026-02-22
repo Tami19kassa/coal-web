@@ -51,30 +51,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } else { alert('ACCESS DENIED'); }
   };
 
-  // --- CONFIG HANDLERS (Multiple Emails/Phones) ---
+  // --- CONFIG HANDLERS ---
   const handleArrayChange = (field: 'emails' | 'phones', index: number, value: string) => {
-    const updated = [...configForm[field]];
+    // Ensure the array exists before copying
+    const currentArray = configForm[field] || [];
+    const updated = [...currentArray];
     updated[index] = value;
     setConfigForm({ ...configForm, [field]: updated });
   };
 
   const addArrayItem = (field: 'emails' | 'phones') => {
-    setConfigForm({ ...configForm, [field]: [...configForm[field], ''] });
+    const currentArray = configForm[field] || [];
+    setConfigForm({ ...configForm, [field]: [...currentArray, ''] });
   };
 
   const removeArrayItem = (field: 'emails' | 'phones', index: number) => {
-    const updated = configForm[field].filter((_, i) => i !== index);
+    const currentArray = configForm[field] || [];
+    const updated = currentArray.filter((_, i) => i !== index);
     setConfigForm({ ...configForm, [field]: updated });
   };
 
   const saveConfig = async () => {
     try {
-      // 1. Save Settings (Using the ID from the fetched settings)
-      // This fixes the "reverting" bug by ensuring we target the existing row.
+      // FIX IS HERE: Remove 'id' from the object before sending to Supabase
+      // The database forbids updating the 'id' column
+      const { id, ...updates } = configForm;
+
       const { error } = await supabase
         .from('site_settings')
-        .update(configForm)
-        .eq('id', settings.id); // Critical: Use the ID from props
+        .update(updates) // Send only the data fields (emails, phones, address, tagline)
+        .eq('id', settings.id); 
 
       if (error) throw error;
       
@@ -101,7 +107,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     await onUpdate();
   };
 
-  // ... (Keep existing Project Handlers: handleImageUpload, saveProject, deleteProject)
+  // --- PROJECT HANDLERS ---
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -136,6 +142,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  // --- SOCIAL TOGGLES ---
+  const toggleSocial = (id: string) => {
+    setSocialForm(prev => prev.map(s => s.id === id ? { ...s, is_active: !s.is_active } : s));
+  };
+
+  const updateSocialUrl = (id: string, url: string) => {
+    setSocialForm(prev => prev.map(s => s.id === id ? { ...s, url } : s));
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -161,9 +176,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <Unlock className="mr-4 text-green-500" /> Command <span className="text-cyan-500">Center</span>
           </h1>
           <div className="flex gap-2">
-            <button onClick={() => setActiveTab('projects')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'projects' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10'}`}>Deployments</button>
-            <button onClick={() => setActiveTab('config')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'config' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10'}`}>Config</button>
-            <button onClick={() => setActiveTab('form')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'form' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10'}`}>Budget Data</button>
+            <button onClick={() => setActiveTab('projects')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'projects' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10 hover:text-white'}`}>Deployments</button>
+            <button onClick={() => setActiveTab('config')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'config' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10 hover:text-white'}`}>Global Config</button>
+            <button onClick={() => setActiveTab('form')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'form' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10 hover:text-white'}`}>Form Data</button>
           </div>
         </div>
 
@@ -209,17 +224,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* --- CONFIG TAB (SETTINGS & SOCIALS) --- */}
+        {/* --- CONFIG TAB --- */}
         {activeTab === 'config' && (
           <div className="max-w-4xl mx-auto grid lg:grid-cols-2 gap-8">
-            {/* Global Settings */}
             <div className="bg-black/50 border border-white/10 p-8">
               <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><Globe className="mr-3 text-cyan-500" /> Global Contact</h3>
               
               <div className="space-y-6">
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Company Emails</label>
-                  {configForm.emails.map((email, idx) => (
+                  {(configForm.emails || []).map((email, idx) => (
                     <div key={idx} className="flex gap-2 mb-2">
                       <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={email} onChange={e => handleArrayChange('emails', idx, e.target.value)} />
                       <button onClick={() => removeArrayItem('emails', idx)} className="text-red-500"><Minus className="w-4 h-4" /></button>
@@ -230,7 +244,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Phone Lines</label>
-                  {configForm.phones.map((phone, idx) => (
+                  {(configForm.phones || []).map((phone, idx) => (
                     <div key={idx} className="flex gap-2 mb-2">
                       <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={phone} onChange={e => handleArrayChange('phones', idx, e.target.value)} />
                       <button onClick={() => removeArrayItem('phones', idx)} className="text-red-500"><Minus className="w-4 h-4" /></button>
@@ -256,7 +270,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
 
-            {/* Social Matrix */}
             <div className="bg-black/50 border border-white/10 p-8">
               <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><Settings className="mr-3 text-cyan-500" /> Social Matrix</h3>
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -298,7 +311,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="grid md:grid-cols-4 gap-4 mb-8 items-end">
                 <div className="md:col-span-1">
                   <label className="text-[10px] uppercase text-slate-500">Project Type</label>
-                  <input className="w-full bg-black border border-white/20 p-3 text-white" placeholder="e.g. Website" value={newBudget.project_type} onChange={e => setNewBudget({...newBudget, project_type: e.target.value})} />
+                  <input className="w-full bg-black border border-white/20 p-3 text-white focus:border-cyan-500 outline-none" placeholder="e.g. Website" value={newBudget.project_type} onChange={e => setNewBudget({...newBudget, project_type: e.target.value})} />
                 </div>
                 <div className="md:col-span-1">
                   <label className="text-[10px] uppercase text-slate-500">Amount (ETB)</label>
@@ -337,6 +350,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X /></button>
                 </div>
                 <form onSubmit={saveProject} className="space-y-6">
+                  {/* ... Project Form Fields ... */}
                   <div className="grid md:grid-cols-2 gap-6">
                     <input placeholder="PROJECT TITLE" required className="bg-black border border-white/10 p-4 text-white focus:border-cyan-500 outline-none" value={projectForm.title} onChange={e => setProjectForm({...projectForm, title: e.target.value})} />
                     <input placeholder="EXTERNAL LINK" required className="bg-black border border-white/10 p-4 text-white focus:border-cyan-500 outline-none" value={projectForm.visitUrl} onChange={e => setProjectForm({...projectForm, visitUrl: e.target.value})} />
