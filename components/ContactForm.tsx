@@ -1,17 +1,15 @@
-// src/components/ContactForm.tsx
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { BudgetOption } from '../types';
 
 interface ContactFormProps {
   onSubmit: (inquiry: any) => void;
-  budgets?: BudgetOption[]; // Optional to avoid crash
+  budgets?: BudgetOption[];
 }
 
 const ContactForm: React.FC<ContactFormProps> = ({ budgets = [] }) => {
-  // Default first option if available, otherwise static default
   const [formData, setFormData] = useState({
-    name: '', email: '', budget: budgets[0]?.label || 'Negotiable', timeline: '1-3 months', message: ''
+    name: '', email: '', budget: '', timeline: '1-3 months', message: ''
   });
   const [status, setStatus] = useState<'idle'|'sending'|'success'|'error'>('idle');
 
@@ -22,7 +20,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ budgets = [] }) => {
       const { error } = await supabase.from('inquiries').insert([formData]);
       if (error) throw error;
       setStatus('success');
-      setFormData({ name: '', email: '', budget: budgets[0]?.label || 'Negotiable', timeline: '1-3 months', message: '' });
+      setFormData({ name: '', email: '', budget: '', timeline: '1-3 months', message: '' });
       setTimeout(() => setStatus('idle'), 5000);
     } catch (err) { setStatus('error'); }
   };
@@ -31,20 +29,19 @@ const ContactForm: React.FC<ContactFormProps> = ({ budgets = [] }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* ... (Same inputs as before) ... */}
       <div className="grid md:grid-cols-2 gap-6">
         <input required placeholder="FULL NAME" className={inputClass} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
         <input required type="email" placeholder="EMAIL ENDPOINT" className={inputClass} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
       </div>
       <div className="grid md:grid-cols-2 gap-6">
         <select className={inputClass} value={formData.budget} onChange={e => setFormData({...formData, budget: e.target.value})}>
-          {budgets.length > 0 ? (
-            budgets.map(b => <option key={b.id} value={b.label}>{b.label}</option>)
-          ) : (
-            <option>Loading ETB Ranges...</option>
-          )}
+          <option value="">SELECT PROJECT TYPE & BUDGET</option>
+          {budgets.map(b => (
+            <option key={b.id} value={`${b.project_type}: ${b.amount}`}>
+              {b.project_type} | {b.amount} ({b.timeline})
+            </option>
+          ))}
         </select>
-        {/* ... (Timeline select and Textarea remain same) ... */}
         <select className={inputClass} value={formData.timeline} onChange={e => setFormData({...formData, timeline: e.target.value})}>
           <option>&lt; 1 Month</option>
           <option>1-3 Months</option>

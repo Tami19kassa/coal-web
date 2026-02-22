@@ -1,3 +1,5 @@
+// src/types.ts
+
 export interface Project {
   id: string;
   title: string;
@@ -19,11 +21,12 @@ export interface Inquiry {
   timestamp: number;
 }
 
+// UPDATED: Now supports arrays
 export interface SiteSettings {
   id?: number;
-  email: string;
+  emails: string[];
+  phones: string[];
   address: string;
-  phone: string;
   tagline: string;
 }
 
@@ -34,8 +37,10 @@ export interface SocialLink {
   is_active: boolean;
 }
 
+// UPDATED: Now supports detailed structure
 export interface BudgetOption {
   id: string;
-  label: string;
-  sort_order: number;
+  project_type: string;
+  amount: string;
+  timeline: string;
 }

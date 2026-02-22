@@ -46,33 +46,45 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ addInquiry, sett
             viewport={{ once: true }}
             className="lg:col-span-2 space-y-4"
           >
-            {/* Email (Always shown or default) */}
-            <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-center space-x-4">
-              <div className="p-3 bg-black border border-white/10 text-cyan-500">
+            {/* EMAILS LIST */}
+            <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
+              <div className="p-3 bg-black border border-white/10 text-cyan-500 mt-1">
                 <Cpu className="w-6 h-6" />
               </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Email Endpoint</div>
-                <div className="font-mono text-white font-bold break-all">{settings?.email || "info@coaldev.et"}</div>
+              <div className="flex-grow">
+                <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Email Uplinks</div>
+                {settings?.emails && settings.emails.length > 0 ? (
+                  settings.emails.map((email, i) => (
+                    <div key={i} className="font-mono text-white font-bold break-all mb-1 border-b border-white/5 pb-1 last:border-0 last:pb-0">
+                      {email}
+                    </div>
+                  ))
+                ) : (
+                  <div className="font-mono text-white font-bold">info@coaldev.et</div>
+                )}
               </div>
             </motion.div>
 
-            {/* Phone (Only if set in Admin) */}
-            {settings?.phone && (
-              <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-center space-x-4">
-                <div className="p-3 bg-black border border-white/10 text-cyan-500">
+            {/* PHONES LIST */}
+            {settings?.phones && settings.phones.length > 0 && (
+              <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-start space-x-4 hover:border-cyan-500/30 transition-colors">
+                <div className="p-3 bg-black border border-white/10 text-cyan-500 mt-1">
                   <Phone className="w-6 h-6" />
                 </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Voice Line</div>
-                  <div className="font-mono text-white font-bold">{settings.phone}</div>
+                <div className="flex-grow">
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Voice Lines</div>
+                  {settings.phones.map((phone, i) => (
+                    <div key={i} className="font-mono text-white font-bold mb-1 border-b border-white/5 pb-1 last:border-0 last:pb-0">
+                      {phone}
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             )}
 
-            {/* Address (Only if set in Admin) */}
+            {/* ADDRESS */}
             {settings?.address && (
-              <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-center space-x-4">
+              <motion.div variants={fadeInUp} className="bg-white/5 border border-white/10 p-6 flex items-center space-x-4 hover:border-cyan-500/30 transition-colors">
                 <div className="p-3 bg-black border border-white/10 text-cyan-500">
                   <MapPin className="w-6 h-6" />
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, Trash2, Edit2, Layout, Mail, X, Upload, Lock, Unlock, Settings, ToggleLeft, ToggleRight, Save, Globe, DollarSign } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Layout, Mail, X, Upload, Lock, Unlock, Settings, ToggleLeft, ToggleRight, Save, Globe, DollarSign, Plus, Minus } from 'lucide-react';
 import { Project, Inquiry, SiteSettings, SocialLink, BudgetOption } from '../types';
 import { supabase } from '../lib/supabase';
 import { pageTransition } from '../lib/animations';
@@ -36,9 +36,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [socialForm, setSocialForm] = useState<SocialLink[]>(socials);
   
   // Budget State
-  const [newBudget, setNewBudget] = useState('');
+  const [newBudget, setNewBudget] = useState({ project_type: '', amount: '', timeline: '' });
 
-  // Sync state when props change (Important for initial load)
   useEffect(() => {
     setConfigForm(settings);
     setSocialForm(socials);
@@ -52,6 +51,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } else { alert('ACCESS DENIED'); }
   };
 
+  // --- CONFIG HANDLERS (Multiple Emails/Phones) ---
+  const handleArrayChange = (field: 'emails' | 'phones', index: number, value: string) => {
+    const updated = [...configForm[field]];
+    updated[index] = value;
+    setConfigForm({ ...configForm, [field]: updated });
+  };
+
+  const addArrayItem = (field: 'emails' | 'phones') => {
+    setConfigForm({ ...configForm, [field]: [...configForm[field], ''] });
+  };
+
+  const removeArrayItem = (field: 'emails' | 'phones', index: number) => {
+    const updated = configForm[field].filter((_, i) => i !== index);
+    setConfigForm({ ...configForm, [field]: updated });
+  };
+
+  const saveConfig = async () => {
+    try {
+      // 1. Save Settings (Using the ID from the fetched settings)
+      // This fixes the "reverting" bug by ensuring we target the existing row.
+      const { error } = await supabase
+        .from('site_settings')
+        .update(configForm)
+        .eq('id', settings.id); // Critical: Use the ID from props
+
+      if (error) throw error;
+      
+      // 2. Save Socials
+      for (const link of socialForm) {
+        await supabase.from('social_links').update({ url: link.url, is_active: link.is_active }).eq('id', link.id);
+      }
+      
+      await onUpdate();
+      alert("GLOBAL CONFIGURATION SAVED SUCCESSFULLY");
+    } catch (err: any) { alert("Save Failed: " + err.message); }
+  };
+
+  // --- BUDGET HANDLERS ---
+  const addBudget = async () => {
+    if (!newBudget.project_type || !newBudget.amount) return alert("Fill all fields");
+    await supabase.from('budget_options').insert([newBudget]);
+    setNewBudget({ project_type: '', amount: '', timeline: '' });
+    await onUpdate();
+  };
+
+  const deleteBudget = async (id: string) => {
+    await supabase.from('budget_options').delete().eq('id', id);
+    await onUpdate();
+  };
+
+  // ... (Keep existing Project Handlers: handleImageUpload, saveProject, deleteProject)
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -86,46 +136,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const saveConfig = async () => {
-    try {
-      // 1. Update Settings
-      await supabase.from('site_settings').update(configForm).eq('id', settings.id || 1);
-      
-      // 2. Update Socials (Loop through all and update)
-      for (const link of socialForm) {
-        await supabase.from('social_links').update({ 
-          url: link.url, 
-          is_active: link.is_active 
-        }).eq('id', link.id);
-      }
-      
-      await onUpdate();
-      alert("SYSTEM CONFIGURATION & SOCIALS UPDATED");
-    } catch (err: any) { alert("Config Save Failed: " + err.message); }
-  };
-
-  // Toggle local state for social active status
-  const toggleSocial = (id: string) => {
-    setSocialForm(prev => prev.map(s => s.id === id ? { ...s, is_active: !s.is_active } : s));
-  };
-
-  // Update local state for social URL
-  const updateSocialUrl = (id: string, url: string) => {
-    setSocialForm(prev => prev.map(s => s.id === id ? { ...s, url } : s));
-  };
-
-  const addBudget = async () => {
-    if (!newBudget) return;
-    await supabase.from('budget_options').insert([{ label: newBudget, sort_order: budgets.length + 1 }]);
-    setNewBudget('');
-    await onUpdate();
-  };
-
-  const deleteBudget = async (id: string) => {
-    await supabase.from('budget_options').delete().eq('id', id);
-    await onUpdate();
-  };
-
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -151,9 +161,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <Unlock className="mr-4 text-green-500" /> Command <span className="text-cyan-500">Center</span>
           </h1>
           <div className="flex gap-2">
-            <button onClick={() => setActiveTab('projects')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'projects' ? 'bg-cyan-600 text-black' : 'bg-transparent text-slate-500 border border-white/10'}`}>Deployments</button>
-            <button onClick={() => setActiveTab('config')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'config' ? 'bg-cyan-600 text-black' : 'bg-transparent text-slate-500 border border-white/10'}`}>Global Config</button>
-            <button onClick={() => setActiveTab('form')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'form' ? 'bg-cyan-600 text-black' : 'bg-transparent text-slate-500 border border-white/10'}`}>Form Data</button>
+            <button onClick={() => setActiveTab('projects')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'projects' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10'}`}>Deployments</button>
+            <button onClick={() => setActiveTab('config')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'config' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10'}`}>Config</button>
+            <button onClick={() => setActiveTab('form')} className={`px-6 py-2 uppercase font-bold tracking-widest border transition-all ${activeTab === 'form' ? 'bg-cyan-600 text-black border-cyan-600' : 'bg-transparent text-slate-500 border-white/10'}`}>Budget Data</button>
           </div>
         </div>
 
@@ -179,7 +189,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
             
             <div className="bg-black border border-white/10 p-4 h-[600px] flex flex-col">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center"><Mail className="w-4 h-4 mr-2" /> Intercepted Signals</div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center"><Mail className="w-4 h-4 mr-2" /> Signals</div>
               <div className="flex-grow overflow-y-auto space-y-2 pr-2">
                 {inquiries.map((i) => (
                   <div key={i.id} className="p-4 border-l-2 border-cyan-500 bg-white/5">
@@ -199,82 +209,116 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* --- CONFIGURATION TAB (SETTINGS & SOCIALS) --- */}
+        {/* --- CONFIG TAB (SETTINGS & SOCIALS) --- */}
         {activeTab === 'config' && (
-          <div className="max-w-4xl mx-auto">
-            {/* Site Settings */}
-            <div className="bg-black/50 border border-white/10 p-8 mb-8">
-              <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><Globe className="mr-3 text-cyan-500" /> Global Contact Data</h3>
-              <div className="grid md:grid-cols-2 gap-6">
+          <div className="max-w-4xl mx-auto grid lg:grid-cols-2 gap-8">
+            {/* Global Settings */}
+            <div className="bg-black/50 border border-white/10 p-8">
+              <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><Globe className="mr-3 text-cyan-500" /> Global Contact</h3>
+              
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Company Email</label>
-                  <input className="w-full bg-black border border-white/20 p-3 text-white focus:border-cyan-500 outline-none" value={configForm.email} onChange={e => setConfigForm({...configForm, email: e.target.value})} />
+                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Company Emails</label>
+                  {configForm.emails.map((email, idx) => (
+                    <div key={idx} className="flex gap-2 mb-2">
+                      <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={email} onChange={e => handleArrayChange('emails', idx, e.target.value)} />
+                      <button onClick={() => removeArrayItem('emails', idx)} className="text-red-500"><Minus className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  <button onClick={() => addArrayItem('emails')} className="text-cyan-500 text-xs flex items-center"><Plus className="w-3 h-3 mr-1" /> Add Email</button>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Phone Lines</label>
+                  {configForm.phones.map((phone, idx) => (
+                    <div key={idx} className="flex gap-2 mb-2">
+                      <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={phone} onChange={e => handleArrayChange('phones', idx, e.target.value)} />
+                      <button onClick={() => removeArrayItem('phones', idx)} className="text-red-500"><Minus className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  <button onClick={() => addArrayItem('phones')} className="text-cyan-500 text-xs flex items-center"><Plus className="w-3 h-3 mr-1" /> Add Phone</button>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Physical Coordinates</label>
+                  <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={configForm.address} onChange={e => setConfigForm({...configForm, address: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Phone Uplink</label>
-                  <input className="w-full bg-black border border-white/20 p-3 text-white focus:border-cyan-500 outline-none" value={configForm.phone} onChange={e => setConfigForm({...configForm, phone: e.target.value})} />
+                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Tagline</label>
+                  <input className="w-full bg-black border border-white/20 p-2 text-white focus:border-cyan-500 outline-none" value={configForm.tagline} onChange={e => setConfigForm({...configForm, tagline: e.target.value})} />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Physical Coordinates (Address)</label>
-                  <input className="w-full bg-black border border-white/20 p-3 text-white focus:border-cyan-500 outline-none" value={configForm.address} onChange={e => setConfigForm({...configForm, address: e.target.value})} />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] uppercase tracking-widest text-slate-500 mb-2">Mission Statement (Tagline)</label>
-                  <input className="w-full bg-black border border-white/20 p-3 text-white focus:border-cyan-500 outline-none" value={configForm.tagline} onChange={e => setConfigForm({...configForm, tagline: e.target.value})} />
-                </div>
+              </div>
+              
+              <div className="mt-8">
+                <button onClick={saveConfig} className="w-full bg-green-600 text-black font-bold px-8 py-4 uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center">
+                  <Save className="mr-2 w-5 h-5" /> Commit Changes
+                </button>
               </div>
             </div>
 
-            {/* Social Media Matrix */}
+            {/* Social Matrix */}
             <div className="bg-black/50 border border-white/10 p-8">
               <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><Settings className="mr-3 text-cyan-500" /> Social Matrix</h3>
-              <p className="text-slate-500 text-xs mb-6">Toggle the switch to display the icon on the footer. Enter full URL.</p>
-              <div className="space-y-4">
-                {socialForm.map((link) => (
-                  <div key={link.id} className="flex items-center gap-4 p-4 border border-white/5 bg-white/5 hover:border-cyan-500/30 transition-colors">
-                    <button onClick={() => toggleSocial(link.id)} className={`transition-colors ${link.is_active ? 'text-green-500' : 'text-slate-600'}`}>
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {socialForm.map((link, i) => (
+                  <div key={link.id} className="flex items-center gap-4 p-3 border border-white/5 bg-white/5">
+                    <button onClick={() => {
+                      const newSocials = [...socialForm];
+                      newSocials[i].is_active = !newSocials[i].is_active;
+                      setSocialForm(newSocials);
+                    }} className={`transition-colors ${link.is_active ? 'text-green-500' : 'text-slate-600'}`}>
                       {link.is_active ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
                     </button>
-                    <div className="w-24 font-bold text-white uppercase text-xs">{link.platform}</div>
-                    <input 
-                      className="flex-grow bg-black border border-white/10 p-2 text-xs text-slate-300 focus:border-cyan-500 outline-none placeholder-slate-700" 
-                      placeholder={`https://...`}
-                      value={link.url}
-                      onChange={(e) => updateSocialUrl(link.id, e.target.value)}
-                    />
+                    <div className="flex-grow">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase">{link.platform}</div>
+                      <input 
+                        className="w-full bg-transparent border-b border-white/10 text-xs text-white focus:border-cyan-500 outline-none py-1" 
+                        placeholder="URL..."
+                        value={link.url}
+                        onChange={(e) => {
+                          const newSocials = [...socialForm];
+                          newSocials[i].url = e.target.value;
+                          setSocialForm(newSocials);
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-
-            <div className="mt-8 flex justify-end">
-              <button onClick={saveConfig} className="bg-green-600 text-black font-bold px-8 py-4 uppercase tracking-widest hover:bg-white transition-all flex items-center shadow-[0_0_20px_rgba(34,197,94,0.3)]">
-                <Save className="mr-2 w-5 h-5" /> Commit System Changes
-              </button>
-            </div>
           </div>
         )}
 
-        {/* --- FORM DATA TAB (BUDGETS) --- */}
+        {/* --- BUDGET FORM TAB --- */}
         {activeTab === 'form' && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-black/50 border border-white/10 p-8">
-              <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><DollarSign className="mr-3 text-cyan-500" /> Project Budget Ranges</h3>
+              <h3 className="text-xl font-bold text-white uppercase mb-6 flex items-center"><DollarSign className="mr-3 text-cyan-500" /> Project Cost Calculator</h3>
               
-              <div className="flex gap-4 mb-8">
-                <input 
-                  className="flex-grow bg-black border border-white/20 p-3 text-white focus:border-cyan-500 outline-none" 
-                  placeholder="e.g. 500,000 - 1,000,000 ETB"
-                  value={newBudget}
-                  onChange={(e) => setNewBudget(e.target.value)}
-                />
-                <button onClick={addBudget} className="bg-cyan-600 text-black font-bold px-6 uppercase text-xs">Add Range</button>
+              <div className="grid md:grid-cols-4 gap-4 mb-8 items-end">
+                <div className="md:col-span-1">
+                  <label className="text-[10px] uppercase text-slate-500">Project Type</label>
+                  <input className="w-full bg-black border border-white/20 p-3 text-white" placeholder="e.g. Website" value={newBudget.project_type} onChange={e => setNewBudget({...newBudget, project_type: e.target.value})} />
+                </div>
+                <div className="md:col-span-1">
+                  <label className="text-[10px] uppercase text-slate-500">Amount (ETB)</label>
+                  <input className="w-full bg-black border border-white/20 p-3 text-white" placeholder="50k - 100k" value={newBudget.amount} onChange={e => setNewBudget({...newBudget, amount: e.target.value})} />
+                </div>
+                <div className="md:col-span-1">
+                  <label className="text-[10px] uppercase text-slate-500">Timeline</label>
+                  <input className="w-full bg-black border border-white/20 p-3 text-white" placeholder="2 Weeks" value={newBudget.timeline} onChange={e => setNewBudget({...newBudget, timeline: e.target.value})} />
+                </div>
+                <button onClick={addBudget} className="bg-cyan-600 text-black font-bold h-[46px] uppercase text-xs flex items-center justify-center">Add</button>
               </div>
 
               <div className="space-y-2">
                 {budgets.map((b) => (
                   <div key={b.id} className="flex justify-between items-center p-4 bg-white/5 border border-white/10">
-                    <span className="text-white font-mono">{b.label}</span>
+                    <div>
+                      <span className="text-cyan-500 font-bold uppercase text-xs mr-4">{b.project_type}</span>
+                      <span className="text-white font-mono text-sm">{b.amount}</span>
+                      <span className="text-slate-500 text-xs ml-4">({b.timeline})</span>
+                    </div>
                     <button onClick={() => deleteBudget(b.id)} className="text-red-500 hover:text-white"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
@@ -283,7 +327,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* --- MODAL FOR PROJECTS (Kept as is) --- */}
+        {/* ... (Modal logic remains) ... */}
         <AnimatePresence>
           {isAdding && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
@@ -293,7 +337,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X /></button>
                 </div>
                 <form onSubmit={saveProject} className="space-y-6">
-                  {/* ... Project Form Fields (same as previous) ... */}
                   <div className="grid md:grid-cols-2 gap-6">
                     <input placeholder="PROJECT TITLE" required className="bg-black border border-white/10 p-4 text-white focus:border-cyan-500 outline-none" value={projectForm.title} onChange={e => setProjectForm({...projectForm, title: e.target.value})} />
                     <input placeholder="EXTERNAL LINK" required className="bg-black border border-white/10 p-4 text-white focus:border-cyan-500 outline-none" value={projectForm.visitUrl} onChange={e => setProjectForm({...projectForm, visitUrl: e.target.value})} />
